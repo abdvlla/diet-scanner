@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+.venv*/
+.python-version
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+**/.vscode/
+**/.claude/
+.idea/
+
+# Expo / React Native local artifacts
+.expo/
+expo-env.d.ts
+android/
+ios/
+node_modules/
