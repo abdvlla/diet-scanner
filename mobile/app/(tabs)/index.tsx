@@ -1,40 +1,36 @@
 import { Overlay } from "@/components/Overlay";
+import ProductInfo from "@/components/ProductInfo";
+import { Product } from "@/types/product";
+import BottomSheet from "@gorhom/bottom-sheet";
 import {
+  BarcodeScanningResult,
   CameraView,
   useCameraPermissions,
-  BarcodeScanningResult,
 } from "expo-camera";
-import { Stack } from "expo-router";
+import { Stack, useFocusEffect } from "expo-router";
+import { setStatusBarStyle, StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
-import {
-  Button,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import BottomSheet from "@gorhom/bottom-sheet";
-import { Product } from "@/types/product";
-import ProductInfo from "@/components/ProductInfo";
+import { Button, Platform, StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
   const [data, setData] = useState<Product | null>(null);
-  const [cameraKey, setCameraKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [flashMode, setFlashMode] = useState(false);
 
   const barcodeLock = useRef(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+    }, []),
+  );
+
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) {
       barcodeLock.current = false;
-      setScanned(false);
       setData(null);
-      setCameraKey((k) => k + 1);
       console.log("barcode lock", barcodeLock.current);
     }
   }, []);
@@ -65,7 +61,6 @@ export default function HomeScreen() {
   ): Promise<void> {
     if (barcodeLock.current) return;
     barcodeLock.current = true;
-    setScanned(true);
     setFlashMode(false);
     setIsLoading(true);
     bottomSheetRef.current?.expand();
@@ -103,9 +98,9 @@ export default function HomeScreen() {
         barcodeScannerSettings={{
           barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"],
         }}
-        key={cameraKey}
         onBarcodeScanned={handleBarcodeScanned}
         enableTorch={flashMode}
+        // zoom={0.1}
       />
       <Overlay toggleFlashMode={toggleFlashMode} flashMode={flashMode} />
       <ProductInfo

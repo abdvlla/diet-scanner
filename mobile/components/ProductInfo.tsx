@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { Product } from "@/types/product";
+import { getScoreColor } from "@/utils";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { Skeleton } from "moti/skeleton";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 interface ProductInfoProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
@@ -17,12 +18,6 @@ export default function ProductInfo({
   handleSheetChanges,
   isLoading,
 }: ProductInfoProps) {
-  function getScoreColor(score: number): string {
-    if (score >= 70) return "#3D7A5C";
-    if (score >= 40) return "#D9A441";
-    return "#C1473A";
-  }
-
   function NutrientRow({
     label,
     value,
