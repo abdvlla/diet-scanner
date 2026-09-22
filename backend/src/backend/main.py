@@ -32,7 +32,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
-    yield    
+    yield
 
 app = FastAPI(lifespan=lifespan)
 
@@ -126,12 +126,20 @@ async def scan_barcode_from_api(barcode: str) -> Product:
     
     async with httpx.AsyncClient() as client:
         response = await client.get(url, timeout=5.0)
-        response.raise_for_status()
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            data = response.json()
+            status_verbose = data.get("status_verbose", "")
+            if "different product type" in status_verbose:
+                raise HTTPException(status_code=404, detail="Product is not a food")
+            raise HTTPException(status_code=404, detail="Product not found in database")
 
         data = response.json()
 
         if data.get("status") == 0:
-            raise HTTPException(status_code=404, detail="Product not found in Open Food Facts")
+            raise HTTPException(status_code=404, detail="Product not found in database")
 
         product = parse_off_product(data)
         return product

@@ -1,6 +1,7 @@
 import { Product } from "@/types/product";
-import { getScoreColor } from "@/utils";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { getScoreBackgroundColor, getScoreColor } from "@/utils";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Skeleton } from "moti/skeleton";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -10,6 +11,7 @@ interface ProductInfoProps {
   data: Product | null;
   handleSheetChanges: (index: number) => void;
   isLoading: boolean;
+  error: string | null;
 }
 
 export default function ProductInfo({
@@ -17,6 +19,7 @@ export default function ProductInfo({
   data,
   handleSheetChanges,
   isLoading,
+  error,
 }: ProductInfoProps) {
   function NutrientRow({
     label,
@@ -67,10 +70,17 @@ export default function ProductInfo({
       ref={bottomSheetRef}
       index={-1}
       snapPoints={["80%"]}
+      enableDynamicSizing={false}
       onChange={handleSheetChanges}
       enablePanDownToClose
     >
-      <BottomSheetView style={styles.contentContainer}>
+      <BottomSheetScrollView style={styles.contentContainer}>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={40} color="#C1473A" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
         {(isLoading || data) && (
           <>
             {isLoading ? (
@@ -87,7 +97,15 @@ export default function ProductInfo({
               </Text>
             )}
 
-            <View style={styles.scoreBlock}>
+            <View
+              style={[
+                styles.scoreBlock,
+                !isLoading &&
+                  data && {
+                    backgroundColor: getScoreBackgroundColor(data.rating.score),
+                  },
+              ]}
+            >
               {isLoading ? (
                 <View style={{ marginBottom: 8 }}>
                   <Skeleton
@@ -250,7 +268,7 @@ export default function ProductInfo({
             </View>
           </>
         )}
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }
@@ -260,7 +278,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
-    backgroundColor: "#FAFAF7",
+    backgroundColor: "white",
   },
   nameText: {
     fontSize: 22,
@@ -272,6 +290,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
     marginBottom: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
   },
   scoreNumber: {
     fontSize: 64,
@@ -320,5 +341,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: "#3A3A3A",
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 200,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#141414",
+    textAlign: "center",
+    lineHeight: 22,
   },
 });

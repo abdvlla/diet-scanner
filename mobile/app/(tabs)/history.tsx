@@ -4,7 +4,7 @@ import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { Skeleton } from "moti/skeleton";
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -47,15 +47,15 @@ function HistorySkeleton() {
 }
 
 export default function History() {
-  const [products, setProducts] = React.useState<Product[] | null>(null);
-  const [product, setProduct] = React.useState<Product | null>(null);
-  const [isLoading, setLoading] = React.useState(true);
-  const [isLoadingProduct, setLoadingProduct] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const bottomSheetRef = React.useRef<BottomSheet>(null);
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const [isLoadingProduct, setLoadingProduct] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setStatusBarStyle("dark");
     }, []),
   );
@@ -63,45 +63,71 @@ export default function History() {
   const router = useRouter();
 
   const fetchProducts = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
+      setError(null);
       setLoading(true);
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/products/`,
+        { signal: controller.signal },
       );
+      clearTimeout(timeoutId);
+
       if (!response.ok) throw new Error("Failed to fetch");
       const products = await response.json();
       setProducts(products);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("Request timed out. Check your connection and try again.");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fetchProducts();
     }, []),
   );
 
   const fetchProductByBarcode = async (barcode: string) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/products/${barcode}`,
+        { signal: controller.signal },
       );
-      if (!response.ok) throw new Error("Failed to fetch");
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        setError(errorResponse.detail);
+        console.log(errorResponse.detail);
+        throw new Error(errorResponse.detail);
+      }
       const product_data = await response.json();
       setProduct(product_data);
       bottomSheetRef.current?.expand();
       console.log(product_data);
-    } catch (err) {
-      console.log(err);
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("Request timed out. Check your connection and try again.");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      }
     } finally {
       setLoadingProduct(false);
     }
   };
 
-  const handleSheetChanges = React.useCallback((index: number) => {
+  const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) {
       setProduct(null);
     }
@@ -119,7 +145,7 @@ export default function History() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.header}>SCAN HISTORY</Text>
+        <Text style={styles.header}>Scan History</Text>
 
         {isLoading && <HistorySkeleton />}
 
@@ -173,18 +199,18 @@ export default function History() {
         handleSheetChanges={handleSheetChanges}
         data={product}
         bottomSheetRef={bottomSheetRef}
+        error={error}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAF7" },
-  content: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: "white" },
+  content: { paddingHorizontal: 24, paddingTop: 100, paddingBottom: 40 },
   header: {
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 1.5,
+    fontSize: 30,
+    fontWeight: "bold",
     color: "#141414",
     marginBottom: 16,
   },
@@ -198,7 +224,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
     color: "#141414",
     flex: 1,
     marginRight: 12,

@@ -17,6 +17,7 @@ export default function HomeScreen() {
   const [data, setData] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [flashMode, setFlashMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const barcodeLock = useRef(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -32,6 +33,7 @@ export default function HomeScreen() {
       barcodeLock.current = false;
       setData(null);
       console.log("barcode lock", barcodeLock.current);
+      setError(null);
     }
   }, []);
 
@@ -61,23 +63,44 @@ export default function HomeScreen() {
   ): Promise<void> {
     if (barcodeLock.current) return;
     barcodeLock.current = true;
+
+    setError(null);
     setFlashMode(false);
     setIsLoading(true);
+
     bottomSheetRef.current?.expand();
 
     console.log("Scanned:", result.data);
     const barcode = result.data;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/products/${barcode}`,
+        { signal: controller.signal },
       );
-      if (!response.ok) throw new Error("Failed to fetch");
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        setError(errorResponse.detail);
+        console.log(errorResponse.detail);
+        throw new Error(errorResponse.detail);
+      }
+
       const product_data = await response.json();
       setData(product_data);
       bottomSheetRef.current?.expand();
       console.log(product_data);
-    } catch (err) {
-      console.log(err);
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("Request timed out. Check your connection and try again.");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -108,6 +131,7 @@ export default function HomeScreen() {
         handleSheetChanges={handleSheetChanges}
         data={data}
         bottomSheetRef={bottomSheetRef}
+        error={error}
       />
     </View>
   );
